@@ -21,11 +21,13 @@ Busca os dados da cidade de Volta Redonda para a data do dia 2024-06-06 e insere
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+#!!!DEV!!!
+#remover na versao final
 from utils.config import load_env_variables
+load_env_variables()
+
 from utils.timer import timer_func
 from utils.spark import get_spark_session,create_table,insert_data
-
-load_env_variables()
 
 @timer_func
 def get_weather_data(citys: List[str]) -> List[Dict[str, Any]]:
@@ -161,35 +163,39 @@ def get_args() -> argparse.Namespace:
 
             
 if __name__ == "__main__":
+    #Coletando argumentos passados via linha de comando
     args = get_args()
     citys : List[str] = args.citys
     dt : str = args.dt
     
+    #Definindo variáveis especificas para a tabela dos dados climaticos
     schema : str = 'raw'
     table_name : str = 'weather_data'
     partition_column : str = "dt"
     key_column : str = 'id'
     order_column : str = "load_dt"
     
+    #Buscando o caminho do diretorio base das tabelas
     database_dir : str = os.getenv('DATABASE_DIR')
     
+    #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema}"
     table_dir : str = f"{schema_dir}/{table_name}"
 
+    #Criando sessão spark
     spark = get_spark_session()
     
+    #Coletando a estrutura da tabela
     weather_schema = get_weather_schema()
     
+    #Verificando se a tabela existe e se não criando-a
     create_table(spark,table_dir,table_name,weather_schema,partition_column)
     
-    df = spark.read.parquet(table_dir)
-    print(df.show())
-    
+    #Coletando os novos dados 
     new_data = format_weather_data(citys)
     
+    #Inserindo os novos dados na tabela
     insert_data(spark,table_dir,table_name,weather_schema,key_column,partition_column,order_column,dt,new_data)
     
-    df = spark.read.parquet(table_dir)
-    
-    print(df.show())
+    #Encerrando a sessão do Spark
     spark.stop()
