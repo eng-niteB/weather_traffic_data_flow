@@ -19,6 +19,15 @@ load_env_variables()
 def get_spark_session(jar_path: str, temp_dir: str) -> SparkSession:
     """
     Retorna a sessao de spark configurada
+    
+    Argumentos:
+    
+    jar_path (str): Indica o caminho dos arquivos jars no ambiente
+    temp_dir (str): Indica o diretorio para os arquivos temporarios do spark
+    
+    Retorno:
+    
+    SparkSession: Sessão do spark que será utilizada no código
     """
     spark = SparkSession.builder \
         .appName("ETLJob") \
@@ -148,7 +157,6 @@ def check_if_table_exists(table_dir: str) -> bool:
         print(f"Erro ao verificar o diretório {table_dir}: {err}")
         return False     
     
-
 if __name__ == "__main__":    
     citys = ['Divinopolis']
     schema = 'raw'
@@ -171,6 +179,3 @@ if __name__ == "__main__":
     df = spark.read.parquet(table_dir)
     print(df.show())
     spark.stop()
-    
-    
-
