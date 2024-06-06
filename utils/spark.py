@@ -8,6 +8,7 @@ from pyspark.sql import functions as F
 from utils.timer import timer_func
 from utils.config import check_if_table_exists,load_env_variables
 from pyspark.sql import types as T
+from typing import Optional
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,7 +53,7 @@ def get_spark_session() -> SparkSession:
     return spark
 
 @timer_func
-def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partition_column : str) -> None:
+def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partition_column : Optional[str] = None) -> None:
     """
     Cria uma tabela como um arquivo parquet para simular um 'CREATE TABLE' no hadoop
     
@@ -69,7 +70,10 @@ def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : 
         initial_data = [(None,) * num_columns]
         
         empty_df = spark.createDataFrame(initial_data, schema)    
-        empty_df.write.partitionBy(partition_column).parquet(table_dir)
+        if partition_column is not None:
+            empty_df.write.partitionBy(partition_column).parquet(table_dir)
+        else:
+            empty_df.write.parquet(table_dir)
     
     else:
         print(f'Tabela {table_name} já existe no ambiente')

@@ -2,6 +2,7 @@
 import os
 import sys
 from pyspark.sql import types as T
+from typing import Dict, Any, List
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,16 +54,17 @@ if __name__ == "__main__":
     schema : str = 'trusted'
     table_name : str = 'dados_climaticos'
     raw_table_name : str = 'weather_data'
-    partition_column : str = "dt"
     key_column : str = 'nu_cidade'
     order_column : str = "dt_carga"
+    optional_fields : List[str] = ['sea_level','grnd_level','visibility','wind_gust']
+    critical_fields : List[str] = ['id','city','country','lon','lat','weather_description','temp','feels_like','temp_min','temp_max','pressure','humidity','wind_speed','wind_deg','sunrise','sunset','load_dt','dt']
     
     #Buscando o caminho do diretorio base das tabelas
     database_dir : str = os.getenv('DATABASE_DIR')
     
     #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema}"
-    table_dir : str = f"{schema_dir}/{table_name}"
+    trusted_dir : str = f"{schema_dir}/{table_name}"
     raw_dir : str = f"{database_dir}/raw/{raw_table_name}"
     
     #Criando sessão spark
@@ -73,9 +75,18 @@ if __name__ == "__main__":
     raw_schema = get_weather_schema()
     
     #Verificando se a tabela existe e se não criando-a
-    create_table(spark,table_dir,table_name,trusted_schema,partition_column)
+    create_table(spark,trusted_dir,table_name,trusted_schema)
     
-    df = spark.read.parquet(raw_dir)
-    df = adjust_raw_column_name(df,raw_schema,trusted_schema)
+    #Buscando os dados da raw zone
+    df_raw = spark.read.parquet(raw_dir)
     
-    print(df.show())
+    #Removendo linhas com valores nulos nas colunas críticas
+    df_raw.dropna(subset=critical_fields)
+    
+    #Ajustando os nomes das colunas para o padrão da Trusted
+    df_raw = adjust_raw_column_name(df_raw,raw_schema,trusted_schema)
+    
+    #Buscando os dados existentes na trusted zone
+    df_trusted = spark.read.parquet(trusted_dir)
+    
+    print(df_trusted.show())
