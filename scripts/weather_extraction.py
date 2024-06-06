@@ -9,6 +9,15 @@ from pyspark.sql import DataFrame
 from pyspark.sql import Window
 from datetime import datetime
 import shutil
+import argparse
+
+"""
+Exemplo execução do código:
+
+spark-submit scripts/weather_extraction.py --citys "Volta Redonda" --dt "2024-06-06" > output.log 2> error.log
+
+Busca os dados da cidade de Volta Redonda para a data do dia 2024-06-06 e insere na camada da raw zone na tabela weather_data
+"""
 
 # Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -93,10 +102,10 @@ def get_weather_schema() -> T.StructType:
             T.StructField("lon", T.FloatType(), True),
             T.StructField("lat", T.FloatType(), True),
             T.StructField("weather_description", T.StringType(), True),
-            T.StructField("temp_f", T.FloatType(), True),
-            T.StructField("feels_like_f", T.FloatType(), True),
-            T.StructField("temp_min_f", T.FloatType(), True),
-            T.StructField("temp_max_f", T.FloatType(), True),
+            T.StructField("temp", T.FloatType(), True),
+            T.StructField("feels_like", T.FloatType(), True),
+            T.StructField("temp_min", T.FloatType(), True),
+            T.StructField("temp_max", T.FloatType(), True),
             T.StructField("pressure", T.IntegerType(), True),
             T.StructField("humidity", T.IntegerType(), True),
             T.StructField("sea_level", T.IntegerType(), True),
@@ -114,7 +123,7 @@ def get_weather_schema() -> T.StructType:
     return schema
 
 @timer_func
-def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partitionColumn : str) -> None:
+def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partition_column : str) -> None:
     """
     Cria uma tabela como um arquivo parquet para simular um 'CREATE TABLE' no hadoop
     
@@ -123,7 +132,7 @@ def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : 
     dir (str): diretório destino da tabela incluindo schema + nome da tabela
     table_name (str): Nome da tabela sendo criada
     schema (StructType): Estrutura da tabela destino incluindo colunas e tipos
-    partitionColumn (str): coluna de particionamento da tabela
+    partition_column (str): coluna de particionamento da tabela
     """
     #Criando dados da carga inicial
     if not check_if_table_exists(table_dir):
@@ -131,7 +140,7 @@ def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : 
         initial_data = [(None,) * num_columns]
         
         empty_df = spark.createDataFrame(initial_data, schema)    
-        empty_df.write.partitionBy(partitionColumn).parquet(table_dir)
+        empty_df.write.partitionBy(partition_column).parquet(table_dir)
     
     else:
         print(f'Tabela {table_name} já existe no ambiente')
@@ -204,7 +213,7 @@ def check_if_table_exists(table_dir: str) -> bool:
         return False     
 
 @timer_func
-def remove_duplicates(spark: SparkSession, df: DataFrame, keyColumn: str, orderColumn : str) -> DataFrame:
+def remove_duplicates(spark: SparkSession, df: DataFrame, key_column: str, order_column : str) -> DataFrame:
     """
     Remove linhas duplicadas do dataframe
     
@@ -212,13 +221,13 @@ def remove_duplicates(spark: SparkSession, df: DataFrame, keyColumn: str, orderC
     Parametros:
     spark (SparkSession): Sessão do spark que será utilizada no processo
     df (DataFrame): DataFrame de onde serão retiradas as duplicidades
-    keyColumn (str): Coluna chave primaria da tabela
-    orderColumn (str): Coluna de ordenação da tabela    
+    key_column (str): Coluna chave primaria da tabela
+    order_column (str): Coluna de ordenação da tabela    
     
     Retorno:
     DataFrame : DataFrame sem duplicadas
     """
-    window = Window.partitionBy(keyColumn).orderBy(orderColumn)
+    window = Window.partitionBy(key_column).orderBy(order_column)
     
     df = df.withColumn('row_num', F.row_number().over(window))
     df = df.filter(F.col('row_num') == 1)
@@ -227,7 +236,7 @@ def remove_duplicates(spark: SparkSession, df: DataFrame, keyColumn: str, orderC
     return df
 
 @timer_func
-def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, keyColumn: str, partitionColumn : str, orderColumn : str, dt : str) -> None:
+def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, key_column: str, partition_column : str, order_column : str, dt : str) -> None:
     """
     Insere os dados novos na tabela destino, tratando eles antes da insercao
     
@@ -236,9 +245,9 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
     dir (str): diretório destino da tabela incluindo schema + nome da tabela
     table_name (str): Nome da tabela sendo criada
     schema (StructType): Estrutura da tabela destino incluindo colunas e tipos
-    keyColumn (str): Coluna chave primaria da tabela
-    partitionColumn (str): coluna de particionamento da tabela
-    orderColumn (str): coluna de ordenacao da tabela
+    key_column (str): Coluna chave primaria da tabela
+    partition_column (str): coluna de particionamento da tabela
+    order_column (str): coluna de ordenacao da tabela
     dt (str): data referencia da carga
     """
     response = get_weather_data(citys,dt)
@@ -248,8 +257,9 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
         
     df_insert = spark.createDataFrame([],schema)
     df_table = spark.read.parquet(table_dir)
-    df_table = df_table.filter(F.col('id') != None)
+    df_table = df_table.filter(F.col('id').isNotNull())
     df_destiny = df_table.filter(F.col('dt') == dt)
+
     
     if errors:
         for error in errors:
@@ -262,16 +272,35 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
 
         df_insert = spark.createDataFrame(new_datas,schema)
         df_destiny = df_destiny.unionByName(df_insert)
-        df_destiny = remove_duplicates(spark, df_destiny, keyColumn, orderColumn)
-        df_destiny.write.mode("overwrite").partitionBy(partitionColumn).parquet(table_dir)
+        df_destiny = remove_duplicates(spark, df_destiny, key_column, order_column)
+        df_destiny.write.mode("overwrite").partitionBy(partition_column).parquet(table_dir)
         print(f'Dado inserido na tabela {table_name} para a partição {dt}')
+
+@timer_func
+def get_args() -> argparse.Namespace:
+    """
+    Define os parametros passados durante a execução do código e retorna seus valores
+    
+    Retorno:
+    argparse.Namespace: Objeto com os valores dos argumentos
+    """
+    parser = argparse.ArgumentParser(description="Argumentos para a carga da tabela")
+    parser.add_argument('--citys', type=str, nargs='+', required=True, help="Relacao de cidades para serem carregadas")
+    parser.add_argument('--dt', type=str, required=True, help="Indica a data referencia da execucao")
+    return parser.parse_args()
+
             
-            
-if __name__ == "__main__":    
-    citys = ['Divinopolis','Contagem']
-    dt = '2024-06-06'
+if __name__ == "__main__":
+    args = get_args()
+    citys = args.citys
+    dt = args.dt
+    
     schema = 'raw'
     table_name = 'weather_data'
+    partition_column = "dt"
+    key_column = 'id'
+    order_column = "load_dt"
+    
     user = os.getenv('POSTGRES_USER')
     password = os.getenv('POSTGRES_PASSWORD')
     temp_dir = os.getenv('TEMP_DIR')
@@ -280,17 +309,15 @@ if __name__ == "__main__":
     
     schema_dir = f"{database_dir}/{schema}"
     table_dir = f"{schema_dir}/{table_name}"
-    partitionColumn = "dt"
-    keyColumn = 'id'
-    orderColumn = "load_dt"
+
     spark = get_spark_session(jar_path,temp_dir)
     
     weather_schema = get_weather_schema()
     
-    create_table(spark,table_dir,table_name,weather_schema,partitionColumn)
+    create_table(spark,table_dir,table_name,weather_schema,partition_column)
     df = spark.read.parquet(table_dir)
     print(df.show())
-    insert_data(spark,table_dir,table_name,weather_schema,keyColumn,partitionColumn,orderColumn,dt)
+    insert_data(spark,table_dir,table_name,weather_schema,key_column,partition_column,order_column,dt)
     df = spark.read.parquet(table_dir)
     print(df.show())
     spark.stop()
