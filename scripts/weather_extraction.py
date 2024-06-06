@@ -4,7 +4,10 @@ import requests
 from pyspark.sql import SparkSession
 from typing import Dict, Any, List
 from pyspark.sql import types as T
+from pyspark.sql import functions as F
 from pyspark.sql import DataFrame
+from pyspark.sql import Window
+from datetime import datetime
 import shutil
 
 # Adicionar o diretório principal ao sys.path
@@ -44,12 +47,13 @@ def get_spark_session(jar_path: str, temp_dir: str) -> SparkSession:
     return spark
 
 @timer_func
-def get_weather_data(citys: List[str]) -> List[Dict[str, Any]]:
+def get_weather_data(citys: List[str], dt : str) -> List[Dict[str, Any]]:
     """
     Busca os dados na API https://openweathermap.org/api a partir da lista de cidades passada
     
     Parametros:
     citys Dict[str]: Dicionario com todas as cidades para que devem ser feitas as requisicoes
+    dt (str): Data referencia para a busca dos dados
     
     Retorno:
     Dict: As informações de clima em caso de sucesso e um array vazio em caso de falha.
@@ -60,7 +64,7 @@ def get_weather_data(citys: List[str]) -> List[Dict[str, Any]]:
     errors = []
     
     for city in citys:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_key}&lang=pt-br"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_key}&date={dt}&lang=pt-br&units=metric"
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -110,7 +114,7 @@ def get_weather_schema() -> T.StructType:
     return schema
 
 @timer_func
-def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partitionKey : str) -> None:
+def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partitionColumn : str) -> None:
     """
     Cria uma tabela como um arquivo parquet para simular um 'CREATE TABLE' no hadoop
     
@@ -119,7 +123,7 @@ def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : 
     dir (str): diretório destino da tabela incluindo schema + nome da tabela
     table_name (str): Nome da tabela sendo criada
     schema (StructType): Estrutura da tabela destino incluindo colunas e tipos
-    partitionKey (str): coluna de particionamento da tabela
+    partitionColumn (str): coluna de particionamento da tabela
     """
     #Criando dados da carga inicial
     if not check_if_table_exists(table_dir):
@@ -127,10 +131,58 @@ def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : 
         initial_data = [(None,) * num_columns]
         
         empty_df = spark.createDataFrame(initial_data, schema)    
-        empty_df.write.partitionBy(partitionKey).parquet(table_dir)
+        empty_df.write.partitionBy(partitionColumn).parquet(table_dir)
     
     else:
         print(f'Tabela {table_name} já existe no ambiente')
+
+@timer_func   
+def format_weather_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Formata o Json retornado pela API para a estrutura esperada no dataFrame, além de criar a coluna dt
+    
+    Argumentos:
+    
+    data (Dict[str, Any]): Json retornado pela API
+    
+    Retorno:
+    Dict[str, Any]: Json formatado já seguindo a estrutura padrão da tabela e com a nova coluna criada
+    """
+    result = []
+    
+    for city in data:
+        dtime = datetime.fromtimestamp(city['dt'])
+        dt = dtime.strftime('%Y-%m-%d')
+        
+        formatted_data = {
+            'id': city['id'],
+            'city': city['name'],
+            'country': city['sys']['country'],
+            'lon': city['coord']['lon'],
+            'lat': city['coord']['lat'],
+            'weather_description': city['weather'][0]['description'],
+            'temp': city['main']['temp'],
+            'feels_like': city['main']['feels_like'],
+            'temp_min': city['main']['temp_min'],
+            'temp_max': city['main']['temp_max'],
+            'pressure': city['main']['pressure'],
+            'humidity': city['main']['humidity'],
+            'sea_level': city['main'].get('sea_level'),  # Campo opcional
+            'grnd_level': city['main'].get('grnd_level'),  # Campo opcional
+            'visibility': city.get('visibility'),  # Campo opcional
+            'wind_speed': city['wind']['speed'],
+            'wind_deg': city['wind']['deg'],
+            'wind_gust': city['wind'].get('gust'),  # Campo opcional
+            'sunrise': city['sys']['sunrise'],
+            'sunset': city['sys']['sunset'],
+            'load_dt': city['dt'],
+            'dt' : dt
+        }
+
+        
+        result.append(formatted_data)
+    
+    return result
 
 @timer_func
 def check_if_table_exists(table_dir: str) -> bool:
@@ -156,9 +208,56 @@ def check_if_table_exists(table_dir: str) -> bool:
     except Exception as err:
         print(f"Erro ao verificar o diretório {table_dir}: {err}")
         return False     
+
+@timer_func
+def remove_duplicates(spark: SparkSession, df: DataFrame, partitionColumn: str, orderColumn : str) -> DataFrame:
+    """
+    Remove linhas duplicadas do dataframe
     
+    
+    Parametros:
+    spark (SparkSession): Sessão do spark que será utilizada no processo
+    df (DataFrame): DataFrame de onde serão retiradas as duplicidades
+    partitionColumn (str): Coluna chave da tabela
+    orderColumn (str): Coluna de ordenação da tabela    
+    
+    Retorno:
+    DataFrame : DataFrame sem duplicadas
+    """
+    window = Window.partitionBy(partitionColumn,'dt').orderBy(orderColumn)
+    
+    df = df.withColumn('row_num', F.row_number().over(window))
+    df = df.filter(F.col('row_num') == 1)
+    df = df.drop('row_num')
+    
+    return(df)
+
+@timer_func
+def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partitionColumn : str, orderColumn : str) -> None:
+    response = get_weather_data(citys)
+    weather_data = response[0]
+    errors = response[1]
+        
+    df_insert = spark.createDataFrame([],schema)
+    df_table = spark.read.parquet(table_dir)
+    df_table = df_table.filter(F.col('id') != None)
+    
+    if errors:
+        for error in errors:
+            raise ValueError(f"status: {error.get('status', 500)}  \n Error: {error['error']}")
+    else:
+        for data in weather_data:
+            new_data = format_weather_data(data)
+            new_df = spark.createDataFrame(new_data,schema)
+            
+            df_insert = df_insert.unionByName(new_df)
+            
+            df_table = df_table.unionByName(df_insert)
+            df_table = remove_duplicates(spark, df_table, partitionColumn, orderColumn)
+            
 if __name__ == "__main__":    
-    citys = ['Divinopolis']
+    citys = ['Divinopolis','Contagem']
+    dt = '2024-06-06'
     schema = 'raw'
     table_name = 'weather_data'
     user = os.getenv('POSTGRES_USER')
@@ -169,13 +268,15 @@ if __name__ == "__main__":
     
     schema_dir = f"{database_dir}/{schema}"
     table_dir = f"{schema_dir}/{table_name}"
-    partitionKey = "dt"
+    partitionColumn = "dt"
     spark = get_spark_session(jar_path,temp_dir)
     
     weather_schema = get_weather_schema()
     
-    create_table(spark,table_dir,table_name,weather_schema,partitionKey)
+    create_table(spark,table_dir,table_name,weather_schema,partitionColumn)
     
-    df = spark.read.parquet(table_dir)
-    print(df.show())
+    response = get_weather_data(citys,dt)
+    wheather = response[0]
+    data = format_weather_data(wheather)
+    print(data)
     spark.stop()
