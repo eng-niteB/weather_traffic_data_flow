@@ -9,7 +9,7 @@ from datetime import datetime
 import argparse
 
 """
-OBJETIVO: Coletar os dados da API https://openweathermap.org/api e insere as informações na tabela da raw no ambiente Hadoop
+OBJETIVO: Coletar os dados da API https://openweathermap.org/api e disponibiliza-los na camada da raw no Hadoop
 
 
 Exemplo execução do código:
