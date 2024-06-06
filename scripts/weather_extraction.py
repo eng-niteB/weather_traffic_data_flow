@@ -162,7 +162,7 @@ def get_args() -> argparse.Namespace:
             
 if __name__ == "__main__":
     args = get_args()
-    citys : Dict[str] = args.citys
+    citys : List[str] = args.citys
     dt : str = args.dt
     
     schema : str = 'raw'
