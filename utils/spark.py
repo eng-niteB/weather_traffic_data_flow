@@ -129,7 +129,7 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
     df_destiny.write.mode("overwrite").partitionBy(partition_column).parquet(table_dir)
     print(f'Dado inserido na tabela {table_name} para a partição {dt}')
     
-def adjust_raw_column_name(df : DataFrame, schema_origin: T.StructType, schema_destiny: T.StructType) -> DataFrame:
+def adjust_origin_column_name(df : DataFrame, schema_origin: T.StructType, schema_destiny: T.StructType) -> DataFrame:
     """
     Renomeia as colunas da raw para os nomes traduzidos da trusted
     

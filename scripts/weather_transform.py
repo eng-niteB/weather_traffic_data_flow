@@ -2,14 +2,15 @@
 import os
 import sys
 from pyspark.sql import types as T
-from typing import Dict, Any, List
+from pyspark.sql import DataFrame
+from typing import List
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 #!!!DEV!!!
 #remover na versao final
-from utils.spark import get_spark_session,create_table,adjust_raw_column_name
+from utils.spark import get_spark_session,create_table,adjust_origin_column_name
 from scripts.weather_extraction import get_weather_schema
 from utils.config import timer_func,load_env_variables
 load_env_variables()
@@ -49,6 +50,21 @@ def get_trusted_schema() -> T.StructType:
     
     return schema
 
+def get_transform_raw(table_path: str, raw_schema: T.StructType, trusted_schema: T.StructType, critical_fields: List[str]) -> DataFrame:
+    """
+    Busca os dados da raw zone faz os tratamentos, traduz as colunas e retorna o novo DataFrame
+    
+    Parametros:
+    table_path (str): Indica o caminho da tabela da raw zone na estrutura atual
+    
+    Retorno:
+    Dataframe: Dataframe tratado para ser inserido na trusted
+    """
+    df_raw = spark.read.parquet(table_path)
+    df_raw.dropna(subset=critical_fields)
+    return adjust_origin_column_name(df_raw,raw_schema,trusted_schema)
+    
+
 if __name__ == "__main__":
     #Definindo variáveis especificas para a tabela dos dados climaticos
     schema : str = 'trusted'
@@ -77,16 +93,8 @@ if __name__ == "__main__":
     #Verificando se a tabela existe e se não criando-a
     create_table(spark,trusted_dir,table_name,trusted_schema)
     
-    #Buscando os dados da raw zone
-    df_raw = spark.read.parquet(raw_dir)
-    
-    #Removendo linhas com valores nulos nas colunas críticas
-    df_raw.dropna(subset=critical_fields)
-    
-    #Ajustando os nomes das colunas para o padrão da Trusted
-    df_raw = adjust_raw_column_name(df_raw,raw_schema,trusted_schema)
+    df_raw = get_transform_raw(raw_dir,raw_schema,trusted_schema,critical_fields)
     
     #Buscando os dados existentes na trusted zone
     df_trusted = spark.read.parquet(trusted_dir)
     
-    print(df_trusted.show())
