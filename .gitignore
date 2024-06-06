@@ -3,3 +3,6 @@
 Docker/*
 
 database/*
+
+error.log
+output.log
