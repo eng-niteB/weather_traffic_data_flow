@@ -213,7 +213,7 @@ def check_if_table_exists(table_dir: str) -> bool:
         return False     
 
 @timer_func
-def remove_duplicates(spark: SparkSession, df: DataFrame, key_column: str, order_column : str) -> DataFrame:
+def remove_duplicates(df: DataFrame, key_column: str, order_column : str) -> DataFrame:
     """
     Remove linhas duplicadas do dataframe
     
@@ -272,7 +272,7 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
 
         df_insert = spark.createDataFrame(new_datas,schema)
         df_destiny = df_destiny.unionByName(df_insert)
-        df_destiny = remove_duplicates(spark, df_destiny, key_column, order_column)
+        df_destiny = remove_duplicates(df_destiny, key_column, order_column)
         df_destiny.write.mode("overwrite").partitionBy(partition_column).parquet(table_dir)
         print(f'Dado inserido na tabela {table_name} para a partição {dt}')
 
