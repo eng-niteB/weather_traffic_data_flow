@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import os
 import sys
 import requests
@@ -161,7 +160,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--dt', type=str, required=True, help="Indica a data referencia da execucao")
     return parser.parse_args()
 
-            
+        
 if __name__ == "__main__":
     #Coletando argumentos passados via linha de comando
     args = get_args()
