@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import os
 import sys
 import requests
@@ -158,7 +157,6 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--citys', type=str, nargs='+', required=True, help="Relacao de cidades para serem carregadas")
     parser.add_argument('--dt', type=str, required=True, help="Indica a data referencia da execucao")
     return parser.parse_args()
-
             
 if __name__ == "__main__":
     args = get_args()

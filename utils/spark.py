@@ -27,7 +27,6 @@ def get_spark_session(jar_path: str, temp_dir: str) -> SparkSession:
     SparkSession: Sessão do spark que será utilizada no código
     """
     spark = SparkSession.builder \
-        .appName("ETLJob") \
         .config("spark.jars", jar_path) \
         .config("spark.local.dir", temp_dir) \
         .config("spark.sql.warehouse.dir", "/tmp/warehouse") \
@@ -35,6 +34,13 @@ def get_spark_session(jar_path: str, temp_dir: str) -> SparkSession:
         .config("spark.hadoop.fs.hdfs.impl.disable.cache", "true") \
         .config("spark.hadoop.fs.s3a.impl.disable.cache", "true") \
         .config("spark.hadoop.fs.nativeio.impl.disable.cache", "true") \
+        .config("spark.sql.sources.partitionOverwriteMode", "dynamic") \
+        .config("spark.sql.parquet.mergeSchema", "true") \
+        .config("spark.sql.files.maxPartitionBytes", "128MB") \
+        .config("spark.sql.files.minPartitionNum", "4") \
+        .config("spark.sql.parquet.compression.codec", "snappy") \
+        .config("spark.sql.parquet.writeLegacyFormat", "true") \
+        .config("parquet.block.size", str(256 * 1024 * 1024)) \
         .master("local[*]") \
         .getOrCreate()
     
