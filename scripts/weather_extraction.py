@@ -250,7 +250,7 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
     order_column (str): coluna de ordenacao da tabela
     dt (str): data referencia da carga
     """
-    response = get_weather_data(citys,dt)
+    response = get_weather_data(citys)
     weather_data = response[0]
     errors = response[1]
     new_datas = []
