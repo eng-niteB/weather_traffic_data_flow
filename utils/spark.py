@@ -6,14 +6,19 @@ from pyspark.sql import DataFrame
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 from utils.timer import timer_func
-from utils.config import check_if_table_exists
+from utils.config import check_if_table_exists,load_env_variables
 from pyspark.sql import types as T
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+load_env_variables()
+
+temp_dir : str = os.getenv('TEMP_DIR')
+jar_path : str = os.getenv('POSTGRES_JAR_PATH')
+
 @timer_func
-def get_spark_session(jar_path: str, temp_dir: str) -> SparkSession:
+def get_spark_session() -> SparkSession:
     """
     Retorna a sessao de spark configurada
     

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import os
 import sys
 import requests
@@ -157,28 +158,25 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--citys', type=str, nargs='+', required=True, help="Relacao de cidades para serem carregadas")
     parser.add_argument('--dt', type=str, required=True, help="Indica a data referencia da execucao")
     return parser.parse_args()
+
             
 if __name__ == "__main__":
     args = get_args()
-    citys = args.citys
-    dt = args.dt
+    citys : Dict[str] = args.citys
+    dt : str = args.dt
     
-    schema = 'raw'
-    table_name = 'weather_data'
-    partition_column = "dt"
-    key_column = 'id'
-    order_column = "load_dt"
+    schema : str = 'raw'
+    table_name : str = 'weather_data'
+    partition_column : str = "dt"
+    key_column : str = 'id'
+    order_column : str = "load_dt"
     
-    user = os.getenv('POSTGRES_USER')
-    password = os.getenv('POSTGRES_PASSWORD')
-    temp_dir = os.getenv('TEMP_DIR')
-    jar_path = os.getenv('POSTGRES_JAR_PATH')
-    database_dir = os.getenv('DATABASE_DIR')
+    database_dir : str = os.getenv('DATABASE_DIR')
     
-    schema_dir = f"{database_dir}/{schema}"
-    table_dir = f"{schema_dir}/{table_name}"
+    schema_dir : str = f"{database_dir}/{schema}"
+    table_dir : str = f"{schema_dir}/{table_name}"
 
-    spark = get_spark_session(jar_path,temp_dir)
+    spark = get_spark_session()
     
     weather_schema = get_weather_schema()
     
