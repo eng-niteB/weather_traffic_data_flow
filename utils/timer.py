@@ -1,6 +1,7 @@
 from time import time
+from typing import Any, Callable
 
-def timer_func(func):
+def timer_func(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrap_func(*args, **kwargs):
         t1 = time()
         result = func(*args, **kwargs)
