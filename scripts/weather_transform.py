@@ -8,7 +8,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 #!!!DEV!!!
 #remover na versao final
-from utils.spark import get_spark_session,create_table
+from utils.spark import get_spark_session,create_table,adjust_raw_column_name
+from scripts.weather_extraction import get_weather_schema
 from utils.config import timer_func,load_env_variables
 load_env_variables()
 
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     #Definindo variáveis especificas para a tabela dos dados climaticos
     schema : str = 'trusted'
     table_name : str = 'dados_climaticos'
+    raw_table_name : str = 'weather_data'
     partition_column : str = "dt"
     key_column : str = 'nu_cidade'
     order_column : str = "dt_carga"
@@ -61,12 +63,19 @@ if __name__ == "__main__":
     #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema}"
     table_dir : str = f"{schema_dir}/{table_name}"
+    raw_dir : str = f"{database_dir}/raw/{raw_table_name}"
     
     #Criando sessão spark
     spark = get_spark_session()
     
     #Coletando a estrutura da tabela
     trusted_schema = get_trusted_schema()
+    raw_schema = get_weather_schema()
     
     #Verificando se a tabela existe e se não criando-a
     create_table(spark,table_dir,table_name,trusted_schema,partition_column)
+    
+    df = spark.read.parquet(raw_dir)
+    df = adjust_raw_column_name(df,raw_schema,trusted_schema)
+    
+    print(df.show())

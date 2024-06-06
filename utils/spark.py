@@ -124,3 +124,25 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
     df_destiny = remove_duplicates(df_destiny, key_column, order_column)
     df_destiny.write.mode("overwrite").partitionBy(partition_column).parquet(table_dir)
     print(f'Dado inserido na tabela {table_name} para a partição {dt}')
+    
+def adjust_raw_column_name(df : DataFrame, schema_origin: T.StructType, schema_destiny: T.StructType) -> DataFrame:
+    """
+    Renomeia as colunas da raw para os nomes traduzidos da trusted
+    
+    Parametros:
+    df_raw (DataFrame): DataFrame com as colunas a serem renomeadas
+    schema_origin (StructType): Esquema das colunas da tabela da raw
+    schema_destiny (StructType): Esquema das tabelas da trusted
+    
+    Retorno:
+    DataFrame: DataFrame com as colunas renomeadas
+    schema_
+    """
+    origin_fields = schema_origin.fields
+    destiny_fields = schema_destiny.fields
+    column_mapping = {origin_field.name : destiny_field.name for origin_field, destiny_field in zip(origin_fields,destiny_fields)}
+    
+    for origin_name, destiny_name in column_mapping.items():
+        df = df.withColumnRenamed(origin_name, destiny_name)
+        
+    return df
