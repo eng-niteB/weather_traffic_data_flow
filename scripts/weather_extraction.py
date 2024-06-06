@@ -73,7 +73,7 @@ def get_weather_data(citys: List[str], dt : str) -> List[Dict[str, Any]]:
     errors = []
     
     for city in citys:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_key}&date={dt}&lang=pt-br&units=metric"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_key}&date={dt}&units=metric&lang=pt-br"
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -227,7 +227,7 @@ def remove_duplicates(spark: SparkSession, df: DataFrame, key_column: str, order
     Retorno:
     DataFrame : DataFrame sem duplicadas
     """
-    window = Window.partitionBy(key_column).orderBy(order_column)
+    window = Window.partitionBy(key_column).orderBy(F.col(order_column).desc())
     
     df = df.withColumn('row_num', F.row_number().over(window))
     df = df.filter(F.col('row_num') == 1)
