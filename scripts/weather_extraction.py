@@ -2,7 +2,6 @@
 import os
 import sys
 import requests
-from pyspark.sql import SparkSession
 from typing import Dict, Any, List
 from pyspark.sql import types as T
 from pyspark.sql import functions as F
@@ -10,6 +9,9 @@ from datetime import datetime
 import argparse
 
 """
+OBJETIVO: Coletar os dados da API https://openweathermap.org/api e insere as informações na tabela da raw no ambiente Hadoop
+
+
 Exemplo execução do código:
 
 spark-submit scripts/weather_extraction.py --citys "Volta Redonda" --dt "2024-06-06" > output.log 2> error.log
