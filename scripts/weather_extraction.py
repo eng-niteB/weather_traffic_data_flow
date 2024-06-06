@@ -56,7 +56,7 @@ def get_spark_session(jar_path: str, temp_dir: str) -> SparkSession:
     return spark
 
 @timer_func
-def get_weather_data(citys: List[str], dt : str) -> List[Dict[str, Any]]:
+def get_weather_data(citys: List[str]) -> List[Dict[str, Any]]:
     """
     Busca os dados na API https://openweathermap.org/api a partir da lista de cidades passada
     
@@ -73,7 +73,7 @@ def get_weather_data(citys: List[str], dt : str) -> List[Dict[str, Any]]:
     errors = []
     
     for city in citys:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_key}&date={dt}&units=metric&lang=pt-br"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_key}&units=metric&lang=pt_br"
         try:
             response = requests.get(url)
             response.raise_for_status()
