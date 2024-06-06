@@ -2,7 +2,11 @@
 
 Docker/*
 
+#ignorando estrutura de tabela local
 database/*
 
+#Ignorando arquivos de log
 error.log
 output.log
+trusted_out.log
+trusted_er.log
