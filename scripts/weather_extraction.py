@@ -7,6 +7,7 @@ from pyspark.sql import types as T
 
 # Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from utils.config import load_env_variables
 from utils.timer import timer_func
 
@@ -100,6 +101,12 @@ def get_weather_schema() -> T.StructType:
     return schema
 
 if __name__ == "__main__":
+    
+    # Define os caminhos para o executavel Python (Segundo os foruns um dos problemas cronicos do spark com o windows)
+    python_path = "C:\\Python311\\python.exe"
+    os.environ["PYSPARK_PYTHON"] = python_path
+    os.environ["PYSPARK_DRIVER_PYTHON"] = python_path
+    
     citys = ['Divinopolis']
     schema = 'raw'
     table_name = 'weather_data'
@@ -109,7 +116,7 @@ if __name__ == "__main__":
     jar_path = os.getenv('POSTGRES_JAR_PATH')
     database_dir = os.getenv('DATABASE_DIR')
     
-    raw_dir = f"{database_dir}\\\\raw"
+    raw_dir = f"{database_dir}\\\\raw\\\\{table_name}"
     partitionKey = "dt"
     spark = get_spark_session(temp_dir)
     
