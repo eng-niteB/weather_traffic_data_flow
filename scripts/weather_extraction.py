@@ -148,41 +148,35 @@ def format_weather_data(data: Dict[str, Any]) -> Dict[str, Any]:
     Retorno:
     Dict[str, Any]: Json formatado já seguindo a estrutura padrão da tabela e com a nova coluna criada
     """
-    result = []
-    
-    for city in data:
-        dtime = datetime.fromtimestamp(city['dt'])
-        dt = dtime.strftime('%Y-%m-%d')
+    dtime = datetime.fromtimestamp(data['dt'])
+    dt = dtime.strftime('%Y-%m-%d')
         
-        formatted_data = {
-            'id': city['id'],
-            'city': city['name'],
-            'country': city['sys']['country'],
-            'lon': city['coord']['lon'],
-            'lat': city['coord']['lat'],
-            'weather_description': city['weather'][0]['description'],
-            'temp': city['main']['temp'],
-            'feels_like': city['main']['feels_like'],
-            'temp_min': city['main']['temp_min'],
-            'temp_max': city['main']['temp_max'],
-            'pressure': city['main']['pressure'],
-            'humidity': city['main']['humidity'],
-            'sea_level': city['main'].get('sea_level'),  # Campo opcional
-            'grnd_level': city['main'].get('grnd_level'),  # Campo opcional
-            'visibility': city.get('visibility'),  # Campo opcional
-            'wind_speed': city['wind']['speed'],
-            'wind_deg': city['wind']['deg'],
-            'wind_gust': city['wind'].get('gust'),  # Campo opcional
-            'sunrise': city['sys']['sunrise'],
-            'sunset': city['sys']['sunset'],
-            'load_dt': city['dt'],
-            'dt' : dt
-        }
+    formatted_data = {
+        'id': data['id'],
+        'city': data['name'],
+        'country': data['sys']['country'],
+        'lon': data['coord']['lon'],
+        'lat': data['coord']['lat'],
+        'weather_description': data['weather'][0]['description'],
+        'temp': data['main']['temp'],
+        'feels_like': data['main']['feels_like'],
+        'temp_min': data['main']['temp_min'],
+        'temp_max': data['main']['temp_max'],
+        'pressure': data['main']['pressure'],
+        'humidity': data['main']['humidity'],
+        'sea_level': data['main'].get('sea_level'),  # Campo opcional
+        'grnd_level': data['main'].get('grnd_level'),  # Campo opcional
+        'visibility': data.get('visibility'),  # Campo opcional
+        'wind_speed': data['wind']['speed'],
+        'wind_deg': data['wind']['deg'],
+        'wind_gust': data['wind'].get('gust'),  # Campo opcional
+        'sunrise': data['sys']['sunrise'],
+        'sunset': data['sys']['sunset'],
+        'load_dt': data['dt'],
+        'dt' : dt
+    }
 
-        
-        result.append(formatted_data)
-    
-    return result
+    return formatted_data
 
 @timer_func
 def check_if_table_exists(table_dir: str) -> bool:
@@ -210,7 +204,7 @@ def check_if_table_exists(table_dir: str) -> bool:
         return False     
 
 @timer_func
-def remove_duplicates(spark: SparkSession, df: DataFrame, partitionColumn: str, orderColumn : str) -> DataFrame:
+def remove_duplicates(spark: SparkSession, df: DataFrame, keyColumn: str, orderColumn : str) -> DataFrame:
     """
     Remove linhas duplicadas do dataframe
     
@@ -218,29 +212,44 @@ def remove_duplicates(spark: SparkSession, df: DataFrame, partitionColumn: str, 
     Parametros:
     spark (SparkSession): Sessão do spark que será utilizada no processo
     df (DataFrame): DataFrame de onde serão retiradas as duplicidades
-    partitionColumn (str): Coluna chave da tabela
+    keyColumn (str): Coluna chave primaria da tabela
     orderColumn (str): Coluna de ordenação da tabela    
     
     Retorno:
     DataFrame : DataFrame sem duplicadas
     """
-    window = Window.partitionBy(partitionColumn,'dt').orderBy(orderColumn)
+    window = Window.partitionBy(keyColumn).orderBy(orderColumn)
     
     df = df.withColumn('row_num', F.row_number().over(window))
     df = df.filter(F.col('row_num') == 1)
     df = df.drop('row_num')
     
-    return(df)
+    return df
 
 @timer_func
-def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partitionColumn : str, orderColumn : str) -> None:
-    response = get_weather_data(citys)
+def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, keyColumn: str, partitionColumn : str, orderColumn : str, dt : str) -> None:
+    """
+    Insere os dados novos na tabela destino, tratando eles antes da insercao
+    
+    Argumentos:
+    spark (SparkSession): Sessão do spark que será utilizada no processo
+    dir (str): diretório destino da tabela incluindo schema + nome da tabela
+    table_name (str): Nome da tabela sendo criada
+    schema (StructType): Estrutura da tabela destino incluindo colunas e tipos
+    keyColumn (str): Coluna chave primaria da tabela
+    partitionColumn (str): coluna de particionamento da tabela
+    orderColumn (str): coluna de ordenacao da tabela
+    dt (str): data referencia da carga
+    """
+    response = get_weather_data(citys,dt)
     weather_data = response[0]
     errors = response[1]
+    new_datas = []
         
     df_insert = spark.createDataFrame([],schema)
     df_table = spark.read.parquet(table_dir)
     df_table = df_table.filter(F.col('id') != None)
+    df_destiny = df_table.filter(F.col('dt') == dt)
     
     if errors:
         for error in errors:
@@ -248,12 +257,15 @@ def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T
     else:
         for data in weather_data:
             new_data = format_weather_data(data)
-            new_df = spark.createDataFrame(new_data,schema)
+            new_datas.append(new_data)
             
-            df_insert = df_insert.unionByName(new_df)
+
+        df_insert = spark.createDataFrame(new_datas,schema)
+        df_destiny = df_destiny.unionByName(df_insert)
+        df_destiny = remove_duplicates(spark, df_destiny, keyColumn, orderColumn)
+        df_destiny.write.mode("overwrite").partitionBy(partitionColumn).parquet(table_dir)
+        print(f'Dado inserido na tabela {table_name} para a partição {dt}')
             
-            df_table = df_table.unionByName(df_insert)
-            df_table = remove_duplicates(spark, df_table, partitionColumn, orderColumn)
             
 if __name__ == "__main__":    
     citys = ['Divinopolis','Contagem']
@@ -269,14 +281,16 @@ if __name__ == "__main__":
     schema_dir = f"{database_dir}/{schema}"
     table_dir = f"{schema_dir}/{table_name}"
     partitionColumn = "dt"
+    keyColumn = 'id'
+    orderColumn = "load_dt"
     spark = get_spark_session(jar_path,temp_dir)
     
     weather_schema = get_weather_schema()
     
     create_table(spark,table_dir,table_name,weather_schema,partitionColumn)
-    
-    response = get_weather_data(citys,dt)
-    wheather = response[0]
-    data = format_weather_data(wheather)
-    print(data)
+    df = spark.read.parquet(table_dir)
+    print(df.show())
+    insert_data(spark,table_dir,table_name,weather_schema,keyColumn,partitionColumn,orderColumn,dt)
+    df = spark.read.parquet(table_dir)
+    print(df.show())
     spark.stop()
