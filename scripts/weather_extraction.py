@@ -5,6 +5,7 @@ from pyspark.sql import SparkSession
 from typing import Dict, Any, List
 from pyspark.sql import types as T
 from pyspark.sql import DataFrame
+import shutil
 
 # Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -68,6 +69,9 @@ def get_weather_data(citys: List[str]) -> List[Dict[str, Any]]:
 def get_weather_schema() -> T.StructType:
     """
     Descreve e retorna a estrutura de dados esperada para a tabela de clima
+    
+    Retorno:
+    StructType: Estrutura que será utilizada para montar o DataFrame
     """
     schema = T.StructType([
             T.StructField("id", T.IntegerType(), True),
@@ -97,13 +101,53 @@ def get_weather_schema() -> T.StructType:
     return schema
 
 @timer_func
-def create_table(spark : SparkSession,dir: str, table_name: str, schema : T.StructType, partitionKey : str) -> None:
-    #Criando dados da carga inicial
-    num_columns = len(schema.fields)
-    initial_data = [(None,) * num_columns]
+def create_table(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, partitionKey : str) -> None:
+    """
+    Cria uma tabela como um arquivo parquet para simular um 'CREATE TABLE' no hadoop
     
-    empty_df = spark.createDataFrame(initial_data, schema)    
-    empty_df.write.partitionBy(partitionKey).parquet(dir)
+    Argumentos:
+    spark (SparkSession): Sessão do spark que será utilizada no processo
+    dir (str): diretório destino da tabela incluindo schema + nome da tabela
+    table_name (str): Nome da tabela sendo criada
+    schema (StructType): Estrutura da tabela destino incluindo colunas e tipos
+    partitionKey (str): coluna de particionamento da tabela
+    """
+    #Criando dados da carga inicial
+    if not check_if_table_exists(table_dir):
+        num_columns = len(schema.fields)
+        initial_data = [(None,) * num_columns]
+        
+        empty_df = spark.createDataFrame(initial_data, schema)    
+        empty_df.write.partitionBy(partitionKey).parquet(table_dir)
+    
+    else:
+        print(f'Tabela {table_name} já existe no ambiente')
+
+@timer_func
+def check_if_table_exists(table_dir: str) -> bool:
+    """
+    Verifica se o diretório da tabela existe e testa algumas condições:
+    1 - Se existir e estiver vazio, exclui o diretório e retorna False.
+    2 - Se existir e não estiver vazio, retorna True.
+    3 - Se não existir, retorna False.
+
+    Argumentos:
+    table_dir (str): Caminho do diretório da tabela.
+
+    Retorno:
+    bool: True se o diretório existir e não estiver vazio, False caso contrário.
+    """
+    try:
+        if os.path.isdir(table_dir):
+            if len(os.listdir(table_dir)) == 0:
+                shutil.rmtree(table_dir)
+                return False
+            return True
+        return False
+    except Exception as err:
+        print(f"Erro ao verificar o diretório {table_dir}: {err}")
+        return False     
+    
 
 if __name__ == "__main__":    
     citys = ['Divinopolis']
@@ -122,7 +166,7 @@ if __name__ == "__main__":
     
     weather_schema = get_weather_schema()
     
-    #create_table(spark,table_dir,table_name,weather_schema,partitionKey)
+    create_table(spark,table_dir,table_name,weather_schema,partitionKey)
     
     df = spark.read.parquet(table_dir)
     print(df.show())
