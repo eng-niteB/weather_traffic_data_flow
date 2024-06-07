@@ -98,7 +98,7 @@ def get_weather_schema() -> T.StructType:
     return schema
 
 @timer_func   
-def format_weather_data(citys: str) -> Dict[str, Any]:
+def format_weather_data(citys: str) -> List[Dict[str, Any]]:
     """
     Formata o Json retornado pela API para a estrutura esperada no dataFrame, além de criar a coluna dt
     
