@@ -2,10 +2,11 @@
 import os
 import sys
 from utils.config import timer_func,load_env_variables
-from utils.spark import get_spark_session,create_table
+from utils.spark import get_spark_session,create_table,get_transform_raw,insert_trusted_data
 from scripts.traffic_extraction import get_traffic_schema
 from pyspark.sql import types as T
 from pyspark.sql import functions as F
+from typing import List
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -46,6 +47,9 @@ if __name__ == "__main__":
     raw_table_name : str = 'traffic_data'
     key_column : str = 'nu_rota'
     order_column : str = "dt_carga"
+    optional_fields : List[str] = ['sea_level','grnd_level','visibility','wind_gust']
+    critical_fields : List[str] = ['id','city','country','lon','lat','weather_description','temp','feels_like','temp_min','temp_max','pressure','humidity','wind_speed','wind_deg','sunrise','sunset','load_dt','dt']
+    
     
     #Buscando o caminho do diretorio base das tabelas
     database_dir : str = os.getenv('DATABASE_DIR')
@@ -64,3 +68,13 @@ if __name__ == "__main__":
     
     #Verificando se a tabela existe e se não criando-a
     create_table(spark,trusted_dir,table_name,trusted_schema)
+    
+    df_raw = get_transform_raw(raw_dir,raw_schema,trusted_schema,critical_fields)
+    
+    #Buscando os dados existentes na trusted zone
+    df_trusted = spark.read.parquet(trusted_dir)
+    
+    #Inserindo novos dados na trusted zone
+    insert_trusted_data(df_raw,df_trusted, key_column, order_column,trusted_dir)
+    
+    spark.stop()

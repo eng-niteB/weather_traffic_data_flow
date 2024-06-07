@@ -2,7 +2,6 @@
 import os
 import sys
 import requests
-import uuid
 from typing import Dict, Any, List
 from pyspark.sql import types as T
 from datetime import datetime
@@ -87,8 +86,12 @@ def format_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 now = datetime.now()
                 ts = int(datetime.timestamp(now))
                 dt = now.strftime('%Y-%m-%d')
+                origin_uuid = data['route']['origin']['nu_cidade']
+                destination_uuid = data['route']['destination']['nu_cidade']
+                route_uuid = f"{origin_uuid}_{destination_uuid}" 
+                
                 new_data = {
-                    'route_uuid': str(uuid.uuid4()),
+                    'route_uuid': route_uuid,
                     'origin_uuid': data['route']['origin']['nu_cidade'],
                     'origin_city': data['route']['origin']['cidade'],
                     'destination_uuid': data['route']['destination']['nu_cidade'],
@@ -203,6 +206,4 @@ if __name__ == "__main__":
     
     #Inserindo os novos dados na tabela
     insert_data(spark,table_dir,table_name,schema_raw,key_column,order_column,dt,new_data,partition_column)
-    df = spark.read.parquet(table_dir)
-    print(df.show())
     spark.stop()

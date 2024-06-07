@@ -3,7 +3,6 @@ import os
 import sys
 from pyspark.sql import types as T
 from pyspark.sql import functions as F
-from pyspark.sql import DataFrame
 from typing import List
 
 #Adicionar o diretório principal ao sys.path
