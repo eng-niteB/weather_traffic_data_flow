@@ -17,7 +17,7 @@ load_env_variables()
 @timer_func
 def get_trusted_schema() -> T.StructType:
     """
-    escreve e retorna a estrutura de dados esperada para a tabela de trafego na trusted zone
+    Descreve e retorna a estrutura de dados esperada para a tabela de trafego na trusted zone
     
     Retorno:
     StructType: Estrutura que será utilizada para montar o DataFrame
