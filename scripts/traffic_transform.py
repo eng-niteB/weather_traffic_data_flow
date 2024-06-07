@@ -2,7 +2,7 @@
 import os
 import sys
 from utils.config import timer_func,load_env_variables
-from utils.spark import get_spark_session
+from utils.spark import get_spark_session,create_table
 from scripts.traffic_extraction import get_traffic_schema
 from pyspark.sql import types as T
 from pyspark.sql import functions as F
@@ -60,3 +60,7 @@ if __name__ == "__main__":
     
     #Coletando a estrutura da tabela
     raw_schema = get_traffic_schema()
+    trusted_schema = get_trusted_schema()
+    
+    #Verificando se a tabela existe e se não criando-a
+    create_table(spark,trusted_dir,table_name,trusted_schema)
