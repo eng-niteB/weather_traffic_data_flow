@@ -8,7 +8,8 @@ from pyspark.sql import functions as F
 from utils.timer import timer_func
 from utils.config import check_if_table_exists,remove_default_partition,load_env_variables
 from pyspark.sql import types as T
-from typing import Optional
+from typing import Dict, Any, List, Optional
+from unidecode import unidecode
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -158,3 +159,36 @@ def adjust_origin_column_name(df : DataFrame, schema_origin: T.StructType, schem
         df = df.withColumnRenamed(origin_name, destiny_name)
         
     return df
+
+@timer_func
+def get_citys_data(spark: SparkSession, table_dir: str, origin: str, destination: str, dt: str) -> List[Dict[str, Any]]:
+    """
+    Busca as informações necessárias das cidades para incrementar nos dados de tráfego
+    
+    Argumentos:
+    spark (SparkSession): Sessão do spark que será utilizada no processo
+    table_dir (str): Diretório destino da tabela incluindo schema + nome da tabela
+    origin (str): Nome da cidade origem
+    destination (str): Nome da cidade destino
+    dt (str): Data de referência
+    
+    Retorno:
+    List[Dict[str, Any]]: Lista com as cidades e suas informações detalhadas
+    """
+    citys = [unidecode(origin), unidecode(destination)]
+    df = spark.read.parquet(table_dir)
+    
+    df = df.withColumn("normalized_cidade", F.udf(unidecode)(F.col("cidade")))
+    
+    df_filtered = df.filter((F.col('normalized_cidade').isin(citys)) & (F.col('dt') == dt))
+        
+    citys_data = [row.asDict() for row in df_filtered.collect()]
+    
+    # Verificação se todas as cidades foram encontradas
+    found_citys = {row['normalized_cidade'] for row in citys_data}
+    missing_citys = set(citys) - found_citys
+    
+    if missing_citys:
+        raise ValueError(f"As seguintes cidades não foram encontradas na tabela: {', '.join(missing_citys)}. Por favor, carregue os dados dessas cidades.")
+    
+    return citys_data

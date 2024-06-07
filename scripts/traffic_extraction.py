@@ -6,9 +6,13 @@ import uuid
 from typing import Dict, Any, List
 from pyspark.sql import types as T
 from datetime import datetime
+import argparse
 
 """
 OBJETIVO: Coletar os dados da API do Maps e disponibilizá-los na camada da raw no Hadoop
+
+bash teste:
+spark-submit scripts/traffic_extraction.py --origin "Contagem" --destination "Carandai" > out.log 2> err.log 
 """
 
 # Adicionar o diretório principal ao sys.path
@@ -20,7 +24,7 @@ from utils.config import load_env_variables
 load_env_variables()
 
 from utils.timer import timer_func
-from utils.spark import get_spark_session, create_table, insert_data
+from utils.spark import get_spark_session, create_table, insert_data, get_citys_data
 
 @timer_func
 def get_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -131,47 +135,74 @@ def get_traffic_schema() -> T.StructType:
     
     return schema
 
-if __name__ == "__main__":    
-    # Definindo variáveis específicas para a tabela dos dados climáticos
-    schema: str = 'raw'
+@timer_func
+def get_args() -> argparse.Namespace:
+    """
+    Define os parametros passados durante a execução do código e retorna seus valores
+    
+    Retorno:
+    argparse.Namespace: Objeto com os valores dos argumentos
+    """
+    parser = argparse.ArgumentParser(description="Argumentos para a carga da tabela")
+    parser.add_argument('--origin', type=str, required=True, help="Cidade de origem")
+    parser.add_argument('--destination', type=str, required=True, help="Cidade de destino")
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    #Coletando argumentos passados via linha de comando
+    args = get_args()
+    origin : str = args.origin
+    destination : str = args.destination
+       
+    # Definindo variáveis específicas para a tabela das Rotas
+    schema_raw: str = 'raw'
+    schema_trusted: str = 'trusted'
     table_name: str = 'traffic_data'
+    citys_table_name: str = 'dados_climaticos'
     partition_column: str = "dt"
     key_column: str = 'route_uuid'
     order_column: str = "load_dt"
     
     now = datetime.now()
     dt = now.strftime('%Y-%m-%d')
-    
+    spark = get_spark_session()
+        
     #Buscando o caminho do diretorio base das tabelas
     database_dir : str = os.getenv('DATABASE_DIR')
     
     #Montando caminhos especificos da camda e da tabela
-    schema_dir : str = f"{database_dir}/{schema}"
+    schema_dir : str = f"{database_dir}/{schema_raw}"
     table_dir : str = f"{schema_dir}/{table_name}"
+    citys_dir : str = f"{database_dir}/{schema_trusted}/{citys_table_name}"
+    
+    #Coletando os dados das cidades origem e destino
+    try:
+        citys_data = get_citys_data(spark,citys_dir,origin,destination,'2024-06-06')
+    except ValueError as e:
+        raise Exception(str(e))
     
     #Coletando a estrutura da tabela
-    schema = get_traffic_schema()
+    schema_raw = get_traffic_schema()
     
     routes = [{
         "origin": {
-            "nu_cidade": 1234,
-            "cidade": "Betim"
+            "nu_cidade": citys_data[0]['nu_cidade'],
+            "cidade": citys_data[0]['cidade']
         },
         "destination": {
-            "nu_cidade": 2345,
-            "cidade": "Barbacena"
+            "nu_cidade": citys_data[1]['nu_cidade'],
+            "cidade": citys_data[1]['cidade']
         }
     }]
-    
-    spark = get_spark_session()
-    
+        
     #Verificando se a tabela existe e se não criando-a
-    create_table(spark,table_dir,table_name,schema,partition_column)
+    create_table(spark,table_dir,table_name,schema_raw,partition_column)
     
     #Coletando os novos dados
     new_data = format_traffic_data(routes)
     
     #Inserindo os novos dados na tabela
-    insert_data(spark,table_dir,table_name,schema,key_column,order_column,dt,new_data,partition_column)
-    
+    insert_data(spark,table_dir,table_name,schema_raw,key_column,order_column,dt,new_data,partition_column)
+    df = spark.read.parquet(table_dir)
+    print(df.show())
     spark.stop()
