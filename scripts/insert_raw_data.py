@@ -13,6 +13,9 @@ Objetivo:
 Bash uso:
     Weather:
         spark-submit scripts/insert_raw_data.py --method "weather" --citys "Resende" --dt "2024-06-07" > out.log 2> err.log
+        
+    Traffic:
+        spark-submit scripts/insert_raw_data.py --method "traffic" --origin "Resende" --destination "Lavras" --dt "2024-06-07" > out.log 2> err.log
 """
 
 #Adicionar o diretório principal ao sys.path
