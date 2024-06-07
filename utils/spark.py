@@ -6,7 +6,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 from utils.timer import timer_func
-from utils.config import check_if_table_exists,load_env_variables
+from utils.config import check_if_table_exists,remove_default_partition,load_env_variables
 from pyspark.sql import types as T
 from typing import Optional
 
@@ -102,32 +102,39 @@ def remove_duplicates(df: DataFrame, key_column: str, order_column : str) -> Dat
     return df
 
 @timer_func
-def insert_data(spark : SparkSession,table_dir: str, table_name: str, schema : T.StructType, key_column: str, partition_column : str, order_column : str, dt : str, new_data) -> None:
+@timer_func
+def insert_data(spark: SparkSession, table_dir: str, table_name: str, schema: T.StructType, key_column: str, order_column: str, dt: str, new_data, partition_column: str) -> None:
     """
-    Insere os dados novos na tabela destino, tratando eles antes da insercao
+    Insere os dados novos na tabela destino, tratando eles antes da inserção
     
     Argumentos:
     spark (SparkSession): Sessão do spark que será utilizada no processo
-    dir (str): diretório destino da tabela incluindo schema + nome da tabela
+    table_dir (str): Diretório destino da tabela incluindo schema + nome da tabela
     table_name (str): Nome da tabela sendo criada
     schema (StructType): Estrutura da tabela destino incluindo colunas e tipos
     key_column (str): Coluna chave primaria da tabela
-    partition_column (str): coluna de particionamento da tabela
-    order_column (str): coluna de ordenacao da tabela
-    dt (str): data referencia da carga
+    partition_column (str): Coluna de particionamento da tabela
+    order_column (str): Coluna de ordenação da tabela
+    dt (str): Data referência da carga
     new_data (Dict[str, Any]): Dados novos a serem inseridos na tabela
     """
-        
-    df_insert = spark.createDataFrame([],schema)
     df_table = spark.read.parquet(table_dir)
-    df_table = df_table.filter(F.col('id').isNotNull())
-    df_destiny = df_table.filter(F.col('dt') == dt)            
+    df_table = df_table.filter(F.col(key_column).isNotNull())
+    df_destiny = df_table.filter(F.col('dt') == dt)
 
-    df_insert = spark.createDataFrame(new_data,schema)
+    df_insert = spark.createDataFrame(new_data, schema)
+    df_insert = df_insert.filter(F.col(key_column).isNotNull())
+    
     df_destiny = df_destiny.unionByName(df_insert)
     df_destiny = remove_duplicates(df_destiny, key_column, order_column)
+    
     df_destiny.write.mode("overwrite").partitionBy(partition_column).parquet(table_dir)
+    
+    # Remover a partição padrão depois de inserir novos dados
+    remove_default_partition(table_dir, partition_column)
+    
     print(f'Dado inserido na tabela {table_name} para a partição {dt}')
+
 
 @timer_func
 def adjust_origin_column_name(df : DataFrame, schema_origin: T.StructType, schema_destiny: T.StructType) -> DataFrame:

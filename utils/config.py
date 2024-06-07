@@ -41,3 +41,19 @@ def check_if_table_exists(table_dir: str) -> bool:
     except Exception as err:
         print(f"Erro ao verificar o diretório {table_dir}: {err}")
         return False
+    
+def remove_default_partition(table_dir: str, partition_column: str) -> None:
+    """
+    Remove a partição padrão criada manualmente para simular um 'CREATE TABLE' no Hadoop
+    
+    Argumentos:
+    table_dir (str): Diretório da tabela
+    partition_column (str): Coluna de particionamento da tabela
+    """
+    default_partition_dir = os.path.join(table_dir, f"{partition_column}=__HIVE_DEFAULT_PARTITION__")
+    
+    if os.path.exists(default_partition_dir):
+        shutil.rmtree(default_partition_dir)
+        print(f"Partição padrão '{default_partition_dir}' removida.")
+    else:
+        print(f"Nenhuma partição padrão '{default_partition_dir}' encontrada para remover.")

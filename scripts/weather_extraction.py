@@ -196,7 +196,7 @@ if __name__ == "__main__":
     new_data = format_weather_data(citys)
     
     #Inserindo os novos dados na tabela
-    insert_data(spark,table_dir,table_name,weather_schema,key_column,partition_column,order_column,dt,new_data)
+    insert_data(spark,table_dir,table_name,weather_schema,key_column,order_column,dt,new_data,partition_column)
     
     #Encerrando a sessão do Spark
     spark.stop()

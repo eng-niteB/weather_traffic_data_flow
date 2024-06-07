@@ -81,7 +81,7 @@ def format_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         for data in datas:
             for route_data in data.get("routes", []):
                 now = datetime.now()
-                ts = datetime.timestamp(now)
+                ts = int(datetime.timestamp(now))
                 dt = now.strftime('%Y-%m-%d')
                 new_data = {
                     'route_uuid': str(uuid.uuid4()),
@@ -136,8 +136,11 @@ if __name__ == "__main__":
     schema: str = 'raw'
     table_name: str = 'traffic_data'
     partition_column: str = "dt"
-    key_column: str = 'id'
+    key_column: str = 'route_uuid'
     order_column: str = "load_dt"
+    
+    now = datetime.now()
+    dt = now.strftime('%Y-%m-%d')
     
     #Buscando o caminho do diretorio base das tabelas
     database_dir : str = os.getenv('DATABASE_DIR')
@@ -152,11 +155,11 @@ if __name__ == "__main__":
     routes = [{
         "origin": {
             "nu_cidade": 1234,
-            "cidade": "Divinópolis"
+            "cidade": "Betim"
         },
         "destination": {
             "nu_cidade": 2345,
-            "cidade": "Contagem"
+            "cidade": "Barbacena"
         }
     }]
     
@@ -165,5 +168,10 @@ if __name__ == "__main__":
     #Verificando se a tabela existe e se não criando-a
     create_table(spark,table_dir,table_name,schema,partition_column)
     
-    data = format_traffic_data(routes)
-    print(data)
+    #Coletando os novos dados
+    new_data = format_traffic_data(routes)
+    
+    #Inserindo os novos dados na tabela
+    insert_data(spark,table_dir,table_name,schema,key_column,order_column,dt,new_data,partition_column)
+    
+    spark.stop()
