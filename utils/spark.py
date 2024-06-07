@@ -175,17 +175,18 @@ def get_citys_data(spark: SparkSession, table_dir: str, origin: str, destination
     Retorno:
     List[Dict[str, Any]]: Lista com as cidades e suas informações detalhadas
     """
-    citys = [unidecode(origin), unidecode(destination)]
+    citys = [unidecode(origin).lower(), unidecode(destination).lower()]
     df = spark.read.parquet(table_dir)
     
-    df = df.withColumn("normalized_cidade", F.udf(unidecode)(F.col("cidade")))
-    
-    df_filtered = df.filter((F.col('normalized_cidade').isin(citys)) & (F.col('dt') == dt))
+    # Normalizando e convertendo os nomes das cidades para minúsculas para comparação
+    df = df.withColumn("normalized_cidade", F.lower(F.udf(unidecode)(F.col("cidade"))))
         
+    df_filtered = df.filter((F.col('normalized_cidade').isin(citys)) & (F.col('dt') == dt))
+    
     citys_data = [row.asDict() for row in df_filtered.collect()]
     
     # Verificação se todas as cidades foram encontradas
-    found_citys = {row['normalized_cidade'] for row in citys_data}
+    found_citys = {row['normalized_cidade'] for row in df_filtered.collect()}
     missing_citys = set(citys) - found_citys
     
     if missing_citys:
