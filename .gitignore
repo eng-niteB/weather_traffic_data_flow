@@ -1,12 +1,16 @@
+# .gitignore
+
+# Ignorar arquivos de configuração do ambiente
 .env
 
+# Ignorar a pasta Docker
 Docker/*
 
-#ignorando estrutura de tabela local
+# Ignorar estrutura de tabela local
 database/*
 
-#Ignorando arquivos de log
-error.log
-output.log
-trusted_out.log
-trusted_er.log
+# Ignorar arquivos de log
+*.log
+
+# Ignorar cache do Python
+__pycache__/
