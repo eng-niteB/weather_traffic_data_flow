@@ -4,6 +4,7 @@ import sys
 import requests
 import uuid
 from typing import Dict, Any, List
+from pyspark.sql import types as T
 from datetime import datetime
 
 """
@@ -57,6 +58,7 @@ def get_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             
     return [traffic_data, errors]
 
+@timer_func
 def format_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Formata os Jsons retornados pela API para a estrutura esperada do DataFrame
@@ -102,6 +104,33 @@ def format_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             
     return formatted_data
 
+@timer_func
+def get_traffic_schema() -> T.StructType:
+    """
+    Descreve e retorna a estrutura de dados esperada para a tabela de tráfego
+    
+    Retorno:
+    StructType: Estrutura que será utilizada para montar o DataFrame
+    """
+    schema = T.StructType([
+            T.StructField("route_uuid", T.StringType(), True),
+            T.StructField("origin_uuid", T.IntegerType(), True),
+            T.StructField("origin_city", T.StringType(), True),
+            T.StructField("destination_uuid", T.IntegerType(), True),
+            T.StructField("destination_city", T.StringType(), True),
+            T.StructField("destination_start", T.StringType(), True),
+            T.StructField("destination_end", T.StringType(), True),
+            T.StructField("cd_travel_distance", T.StringType(), True),
+            T.StructField("travel_distance", T.IntegerType(), True),
+            T.StructField("cd_travel_duration", T.StringType(), True),
+            T.StructField("travel_duration", T.IntegerType(), True),
+            T.StructField("steps", T.ArrayType(T.MapType(T.StringType(), T.StringType())), True),
+            T.StructField("load_dt", T.LongType(), True),
+            T.StructField("dt", T.StringType(), True)
+        ])
+    
+    return schema
+
 if __name__ == "__main__":    
     # Definindo variáveis específicas para a tabela dos dados climáticos
     schema: str = 'raw'
@@ -109,6 +138,16 @@ if __name__ == "__main__":
     partition_column: str = "dt"
     key_column: str = 'id'
     order_column: str = "load_dt"
+    
+    #Buscando o caminho do diretorio base das tabelas
+    database_dir : str = os.getenv('DATABASE_DIR')
+    
+    #Montando caminhos especificos da camda e da tabela
+    schema_dir : str = f"{database_dir}/{schema}"
+    table_dir : str = f"{schema_dir}/{table_name}"
+    
+    #Coletando a estrutura da tabela
+    schema = get_traffic_schema()
     
     routes = [{
         "origin": {
@@ -120,6 +159,11 @@ if __name__ == "__main__":
             "cidade": "Contagem"
         }
     }]
+    
+    spark = get_spark_session()
+    
+    #Verificando se a tabela existe e se não criando-a
+    create_table(spark,table_dir,table_name,schema,partition_column)
     
     data = format_traffic_data(routes)
     print(data)
