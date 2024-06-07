@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-from utils.config import timer_func,load_env_variables
-from utils.spark import get_spark_session,create_table,get_transform_raw,insert_trusted_data
-from scripts.traffic_extraction import get_traffic_schema
 from pyspark.sql import types as T
 from pyspark.sql import functions as F
 from typing import List
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.config import timer_func,load_env_variables
+from utils.spark import get_spark_session,create_table,get_transform_raw,insert_trusted_data
+from scripts.traffic_extraction import get_traffic_schema
 
 load_env_variables()
 
@@ -47,9 +48,8 @@ if __name__ == "__main__":
     raw_table_name : str = 'traffic_data'
     key_column : str = 'nu_rota'
     order_column : str = "dt_carga"
-    optional_fields : List[str] = ['sea_level','grnd_level','visibility','wind_gust']
-    critical_fields : List[str] = ['id','city','country','lon','lat','weather_description','temp','feels_like','temp_min','temp_max','pressure','humidity','wind_speed','wind_deg','sunrise','sunset','load_dt','dt']
-    
+    optional_fields : List[str] = []
+    critical_fields : List[str] = ["route_uuid","origin_uuid","origin_city","destination_uuid","destination_city","destination_start","destination_end","cd_travel_distance","travel_distance","cd_travel_duration","travel_duration","steps","load_dt","dt"]
     
     #Buscando o caminho do diretorio base das tabelas
     database_dir : str = os.getenv('DATABASE_DIR')
