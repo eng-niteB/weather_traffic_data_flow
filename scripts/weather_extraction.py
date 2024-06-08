@@ -22,13 +22,9 @@ Busca os dados da cidade de Volta Redonda para a data do dia 2024-06-06 e insere
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-#!!!DEV!!!
-#remover na versao final
-from utils.config import load_env_variables
-load_env_variables()
-
 from utils.timer import timer_func
 from utils.spark import get_spark_session,create_table,insert_data
+from utils.config import read_secret
 
 @timer_func
 def get_weather_data(citys: List[str]) -> List[Dict[str, Any]]:
@@ -42,7 +38,7 @@ def get_weather_data(citys: List[str]) -> List[Dict[str, Any]]:
     Retorno:
     Dict: As informações de clima em caso de sucesso e um array vazio em caso de falha.
     """
-    weather_key = os.getenv('WEATHER_KEY')
+    weather_key = read_secret('/run/secrets/weather_key')
     
     weather = []
     errors = []
@@ -177,7 +173,7 @@ if __name__ == "__main__":
     order_column : str = "load_dt"
     
     #Buscando o caminho do diretorio base das tabelas
-    database_dir : str = os.getenv('DATABASE_DIR')
+    database_dir : str = read_secret('/run/secrets/database_dir')
     
     #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema}"

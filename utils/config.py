@@ -9,13 +9,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.timer import timer_func
 
-def load_env_variables():
-    """
-    Load environment variables from a .env file.
-    """
-    directory = os.path.dirname(os.path.abspath(__file__))
-    dotenv_path = os.path.join(directory, '../.env')
-    load_dotenv(dotenv_path)
+def read_secret(secret_path):
+    try:
+        with open(secret_path, 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        print(f"Secret file {secret_path} not found")
+        return None
 
 @timer_func
 def check_if_table_exists(table_dir: str) -> bool:

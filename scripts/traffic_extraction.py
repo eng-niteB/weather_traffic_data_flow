@@ -17,13 +17,9 @@ spark-submit scripts/traffic_extraction.py --origin "Contagem" --destination "Ca
 # Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-#!!!DEV!!!
-# Remover na versão final
-from utils.config import load_env_variables
-load_env_variables()
-
 from utils.timer import timer_func
 from utils.spark import get_spark_session, create_table, insert_data, get_citys_data
+from utils.config import read_secret
 
 @timer_func
 def get_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -36,7 +32,7 @@ def get_traffic_data(routes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Retorno:
     List[Dict[str, Any]]: Lista com as informações das rotas passadas
     """
-    api_key: str = os.getenv('MAPS_KEY')
+    api_key: str = read_secret('/run/secrets/maps_key')
     
     traffic_data: List[Dict[str, Any]] = []
     errors: List[Dict[str, Any]] = []
@@ -171,7 +167,7 @@ if __name__ == "__main__":
     spark = get_spark_session()
         
     #Buscando o caminho do diretorio base das tabelas
-    database_dir : str = os.getenv('DATABASE_DIR')
+    database_dir : str = read_secret('/run/secrets/database_dir')
     
     #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema_raw}"

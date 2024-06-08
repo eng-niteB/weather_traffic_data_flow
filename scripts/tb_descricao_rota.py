@@ -7,17 +7,16 @@ from typing import Dict, Any, List
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.config import timer_func,load_env_variables
+from utils.config import timer_func,read_secret
 from utils.spark import get_spark_session,create_table,insert_trusted_data
 from models.traffic import Traffic
 from models.weather import Weather
 from models.route_description import routeDescription
 
-load_env_variables()
 
 if __name__ == "__main__":
     #Buscando o caminho do diretorio base das tabelas
-    database_dir : str = os.getenv('DATABASE_DIR')
+    database_dir : str = read_secret('/run/secrets/database_dir')
     
     #Criando as classes a serem utilizdas
     weather : Weather = Weather()

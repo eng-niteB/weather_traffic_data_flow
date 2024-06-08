@@ -8,11 +8,10 @@ from typing import List
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.config import timer_func,load_env_variables
+from utils.config import read_secret
+from utils.timer import timer_func
 from utils.spark import get_spark_session,create_table,get_transform_raw,insert_trusted_data
 from scripts.traffic_extraction import get_traffic_schema
-
-load_env_variables()
 
 @timer_func
 def get_trusted_schema() -> T.StructType:
@@ -52,7 +51,7 @@ if __name__ == "__main__":
     critical_fields : List[str] = ["route_uuid","origin_uuid","origin_city","destination_uuid","destination_city","destination_start","destination_end","cd_travel_distance","travel_distance","cd_travel_duration","travel_duration","steps","load_dt","dt"]
     
     #Buscando o caminho do diretorio base das tabelas
-    database_dir : str = os.getenv('DATABASE_DIR')
+    database_dir : str = read_secret('/run/secrets/database_dir')
     
     #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema}"

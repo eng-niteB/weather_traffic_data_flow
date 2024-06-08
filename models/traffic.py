@@ -10,8 +10,7 @@ import requests
 # Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.config import timer_func, load_env_variables
-load_env_variables()
+from utils.config import timer_func,read_secret
 
 @dataclass(frozen=True)
 class Traffic:
@@ -92,7 +91,7 @@ class Traffic:
         Retorno:
         List[Dict[str, Any]]: Lista com as informações das rotas passadas
         """
-        api_key: str = os.getenv('MAPS_KEY')
+        api_key: str = read_secret('/run/secrets/maps_key')
         
         traffic_data: List[Dict[str, Any]] = []
         errors: List[Dict[str, Any]] = []

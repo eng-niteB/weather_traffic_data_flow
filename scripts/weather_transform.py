@@ -11,8 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 #remover na versao final
 from utils.spark import get_spark_session,create_table,get_transform_raw,insert_trusted_data
 from scripts.weather_extraction import get_weather_schema
-from utils.config import timer_func,load_env_variables
-load_env_variables()
+from utils.timer import timer_func
+from utils.config import read_secret
 
 @timer_func
 def get_trusted_schema() -> T.StructType:
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     critical_fields : List[str] = ['id','city','country','lon','lat','weather_description','temp','feels_like','temp_min','temp_max','pressure','humidity','wind_speed','wind_deg','sunrise','sunset','load_dt','dt']
     
     #Buscando o caminho do diretorio base das tabelas
-    database_dir : str = os.getenv('DATABASE_DIR')
+    database_dir : str = read_secret('/run/secrets/database_dir')
     
     #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema}"
@@ -85,4 +85,6 @@ if __name__ == "__main__":
     #Inserindo novos dados na trusted zone
     insert_trusted_data(df_raw,df_trusted, key_column, order_column,trusted_dir)
     
+    df_trusted = spark.read.parquet(trusted_dir)
+    df_trusted.show()
     spark.stop()
