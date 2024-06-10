@@ -4,14 +4,13 @@ import sys
 from pyspark.sql import types as T
 from typing import Dict, Any, List
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import requests
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.config import timer_func, load_env_variables
-load_env_variables()
+from utils.config import timer_func,read_secret
 
 @dataclass(frozen=True)
 class Weather:
@@ -24,8 +23,9 @@ class Weather:
     trusted_key_column : str = 'nu_cidade'
     trusted_order_column : str = "dt_carga"
     partition_column: str = "dt"
-
-    
+    optional_fields: List[str] = field(default_factory=lambda: ['sea_level','grnd_level','visibility','wind_gust'])
+    critical_fields: List[str] = field(default_factory=lambda: ['id','city','country','lon','lat','weather_description','temp','feels_like','temp_min','temp_max','pressure','humidity','wind_speed','wind_deg','sunrise','sunset','load_dt','dt'])
+        
     @staticmethod
     def get_trusted_schema() -> T.StructType:
         """
@@ -109,7 +109,7 @@ class Weather:
         Retorno:
         Dict: As informações de clima em caso de sucesso e um array vazio em caso de falha.
         """
-        weather_key = os.getenv('WEATHER_KEY')
+        weather_key = read_secret('/run/secrets/weather_key')
         
         weather = []
         errors = []
@@ -147,38 +147,39 @@ class Weather:
         errors = response[1]
         new_datas = []
         
+        
+        for data in weather_data:
+            dtime = datetime.fromtimestamp(data['dt'])
+            dt = dtime.strftime('%Y-%m-%d')
+            new_data = {
+                'id': data.get('id'),
+                'city': data.get('name', None),
+                'country': data.get('sys', {}).get('country', None),
+                'lon': float(data.get('coord', {}).get('lon', 0.0)),
+                'lat': float(data.get('coord', {}).get('lat', 0.0)),
+                'weather_description': data.get('weather', [{}])[0].get('description', None),
+                'temp': float(data.get('main', {}).get('temp', 0.0)),
+                'feels_like': float(data.get('main', {}).get('feels_like', 0.0)),
+                'temp_min': float(data.get('main', {}).get('temp_min', 0.0)),
+                'temp_max': float(data.get('main', {}).get('temp_max', 0.0)),
+                'pressure': int(data.get('main', {}).get('pressure', 0)),
+                'humidity': int(data.get('main', {}).get('humidity', 0)),
+                'sea_level': int(data.get('main', {}).get('sea_level', 0)) if 'sea_level' in data.get('main', {}) else None,
+                'grnd_level': int(data.get('main', {}).get('grnd_level', 0)) if 'grnd_level' in data.get('main', {}) else None,
+                'visibility': int(data.get('visibility', 0)),
+                'wind_speed': float(data.get('wind', {}).get('speed', 0.0)),
+                'wind_deg': int(data.get('wind', {}).get('deg', 0)),
+                'wind_gust': float(data.get('wind', {}).get('gust', 0.0)) if 'gust' in data.get('wind', {}) else None,
+                'sunrise': int(data.get('sys', {}).get('sunrise', 0)),
+                'sunset': int(data.get('sys', {}).get('sunset', 0)),
+                'load_dt': int(data.get('dt', 0)),
+                'dt': datetime.fromtimestamp(data.get('dt', 0)).strftime('%Y-%m-%d')
+            }
+            new_datas.append(new_data)
+            
         if errors:
             for error in errors:
-                raise ValueError(f"status: {error.get('status', 500)}  \n Error: {error['error']}")
-        else:
-            for data in weather_data:
-                dtime = datetime.fromtimestamp(data['dt'])
-                dt = dtime.strftime('%Y-%m-%d')
-                new_data = {
-                    'id': data['id'],
-                    'city': data['name'],
-                    'country': data['sys']['country'],
-                    'lon': data['coord']['lon'],
-                    'lat': data['coord']['lat'],
-                    'weather_description': data['weather'][0]['description'],
-                    'temp': data['main']['temp'],
-                    'feels_like': data['main']['feels_like'],
-                    'temp_min': data['main']['temp_min'],
-                    'temp_max': data['main']['temp_max'],
-                    'pressure': data['main']['pressure'],
-                    'humidity': data['main']['humidity'],
-                    'sea_level': data['main'].get('sea_level'),  # Campo opcional
-                    'grnd_level': data['main'].get('grnd_level'),  # Campo opcional
-                    'visibility': data.get('visibility'),  # Campo opcional
-                    'wind_speed': data['wind']['speed'],
-                    'wind_deg': data['wind']['deg'],
-                    'wind_gust': data['wind'].get('gust'),  # Campo opcional
-                    'sunrise': data['sys']['sunrise'],
-                    'sunset': data['sys']['sunset'],
-                    'load_dt': data['dt'],
-                    'dt' : dt
-                }
-                new_datas.append(new_data)
+                 print(ValueError(f"status: {error.get('status', 500)}  \n Error: {error['error']}"))
 
         return new_datas
 

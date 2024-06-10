@@ -9,9 +9,8 @@ from pyspark.sql import SparkSession
 # Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.config import timer_func, load_env_variables
+from utils.config import timer_func
 from utils.spark import get_citys_data
-load_env_variables()
 
 @dataclass(frozen=True)
 class routeDescription:
@@ -48,6 +47,10 @@ class routeDescription:
                 T.StructField("temp_minima_destino", T.FloatType(), True),
                 T.StructField("temp_max_destino", T.FloatType(), True),
                 T.StructField("altitude_destino", T.IntegerType(), True),
+                T.StructField("cd_distancia", T.StringType(), True),
+                T.StructField("distancia", T.IntegerType(), True),
+                T.StructField("cd_duracao", T.StringType(), True),
+                T.StructField("duracao", T.IntegerType(), True),
                 T.StructField("passos", T.ArrayType(T.MapType(T.StringType(), T.StringType())), True),
                 T.StructField("dt_carga", T.LongType(), True),
                 T.StructField("dt", T.StringType(), True)
@@ -82,6 +85,8 @@ class routeDescription:
             origin_data = citys_data[0]
             destination_data = citys_data[1]
             
+            print(data)
+                       
             formatted_data = {
                 "nu_rota" : data['nu_rota'],
                 "nu_origem" : data["nu_cidade_origem"],
@@ -102,11 +107,16 @@ class routeDescription:
                 "temp_minima_destino" : destination_data['temperatura_minima'],
                 "temp_max_destino" : destination_data['temperatura_maxima'],
                 "altitude_destino" : destination_data.get('nivel_do_mar'),
+                "cd_distancia" : data['cd_distancia'],
+                "distancia" : data['distancia'],
+                "cd_duracao" : data['cd_duracao'],
+                "duracao" : data["duracao"],
                 "passos" : data['passos'],
                 "dt_carga" : ts,
                 "dt" : data["dt"]
             }
             
+            print(formatted_data)
             new_data.append(formatted_data)
     
         return new_data

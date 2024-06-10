@@ -6,7 +6,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 from utils.timer import timer_func
-from utils.config import check_if_table_exists,remove_default_partition,load_env_variables
+from utils.config import check_if_table_exists,remove_default_partition,read_secret
 from pyspark.sql import types as T
 from typing import Dict, Any, List, Optional
 from unidecode import unidecode
@@ -14,10 +14,8 @@ from unidecode import unidecode
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-load_env_variables()
-
-temp_dir : str = os.getenv('TEMP_DIR')
-jar_path : str = os.getenv('POSTGRES_JAR_PATH')
+temp_dir : str = read_secret('/run/secrets/temp_dir')
+jar_path : str = read_secret('/run/secrets/postgres_jar_path')
 
 @timer_func
 def get_spark_session() -> SparkSession:

@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+  spark-hadoop:
+    image: spark
+    build:
+      context: .
+    ports:
+      - "2223:22"
+    secrets:
+      - maps_key
+      - weather_key
+      - temp_dir
+      - postgres_jar_path
+      - database_dir
+
+secrets:
+  maps_key:
+    file: ./maps_key.txt
+  weather_key:
+    file: ./weather_key.txt
+  temp_dir:
+    file: ./temp_dir.txt
+  postgres_jar_path:
+    file: ./postgres_jar_path.txt
+  database_dir:
+    file: ./database_dir.txt

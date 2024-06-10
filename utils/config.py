@@ -2,20 +2,20 @@
 import os
 import sys
 import shutil
-from dotenv import load_dotenv
+import argparse
 
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.timer import timer_func
 
-def load_env_variables():
-    """
-    Load environment variables from a .env file.
-    """
-    directory = os.path.dirname(os.path.abspath(__file__))
-    dotenv_path = os.path.join(directory, '../.env')
-    load_dotenv(dotenv_path)
+def read_secret(secret_path):
+    try:
+        with open(secret_path, 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        print(f"Secret file {secret_path} not found")
+        return None
 
 @timer_func
 def check_if_table_exists(table_dir: str) -> bool:
@@ -57,3 +57,19 @@ def remove_default_partition(table_dir: str, partition_column: str) -> None:
         print(f"Partição padrão '{default_partition_dir}' removida.")
     else:
         print(f"Nenhuma partição padrão '{default_partition_dir}' encontrada para remover.")
+        
+@timer_func
+def get_args() -> argparse.Namespace:
+    """
+    Define os parametros passados durante a execução do código e retorna seus valores
+    
+    Retorno:
+    argparse.Namespace: Objeto com os valores dos argumentos
+    """
+    parser = argparse.ArgumentParser(description="Argumentos para a carga da tabela")
+    parser.add_argument('--method', type=str, required=True, help="Indica se será uma carga de 'weather' ou 'traffic'")
+    parser.add_argument('--citys', type=str, nargs='+', required=False, help="Relacao de cidades para serem carregadas")
+    parser.add_argument('--origin', type=str, required=False, help="Cidade de origem")
+    parser.add_argument('--destination', type=str, required=False, help="Cidade de destino")
+    parser.add_argument('--dt', type=str, required=True, help="Indica a data referencia da execucao")
+    return parser.parse_args()

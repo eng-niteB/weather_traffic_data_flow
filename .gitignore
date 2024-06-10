@@ -4,7 +4,8 @@
 .env
 
 # Ignorar a pasta Docker
-Docker/*
+Docker/linux_dev/*
+Docker/linux_teste/*.txt
 
 # Ignorar estrutura de tabela local
 database/*

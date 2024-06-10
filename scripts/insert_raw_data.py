@@ -21,13 +21,10 @@ Bash uso:
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-#!!!DEV!!!
-#remover na versao final
 from utils.spark import get_spark_session,create_table,insert_data,get_citys_data
-from utils.config import timer_func,load_env_variables
+from utils.config import timer_func,read_secret
 from models.weather import Weather
 from models.traffic import Traffic
-load_env_variables()
 
 @timer_func
 def get_args() -> argparse.Namespace:
@@ -69,7 +66,7 @@ if __name__ == "__main__":
     order_column : str = model.raw_order_column
     
     #Buscando o caminho do diretorio base das tabelas
-    database_dir : str = os.getenv('DATABASE_DIR')
+    database_dir : str = read_secret('/run/secrets/database_dir')
     
     #Montando caminhos especificos da camda e da tabela
     schema_dir : str = f"{database_dir}/{schema}"
@@ -101,7 +98,7 @@ if __name__ == "__main__":
     
     #Verificando se a tabela existe e se não criando-a
     create_table(spark,table_dir,table_name,table_schema,partition_column)
-    
+        
     #Coletando os novos dados 
     new_data = model.format_data(citys,dt)
     
