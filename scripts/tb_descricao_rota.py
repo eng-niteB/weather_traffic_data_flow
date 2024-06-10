@@ -36,22 +36,28 @@ if __name__ == "__main__":
     #Verificando se a tabela existe e se não criando-a
     create_table(spark,route_description_table_dir,route_description.trusted_name,route_description.get_trusted_schema())
     
+    #Busca os dados de rotas solicitadas
     df_routes = spark.read.parquet(routes_table_dir)
     
+    #Coletando os dados de rota
     routes = df_routes.collect()
     
+    #Coletando as linhas
     datas : List[Dict[str, Any]] = [row.asDict() for row in routes]
      
+    #Formatando os dados
     new_data = route_description.format_data(spark,weather_table_dir,datas)
     
+    #Criando DataFrame com os novos dados
     df_new_data = spark.createDataFrame(new_data,route_description.get_trusted_schema())
     
+    #Coletando os dados ja existentes na tabela
     df_trusted = spark.read.parquet(route_description_table_dir)
     
+    #Inserindo os novos dados na tabela
     insert_trusted_data(df_new_data, df_trusted, key_column, order_colum, route_description_table_dir)
     
-    df_trusted = spark.read.parquet(route_description_table_dir)
-    df_trusted.show()
+    #Encerrando a sessao do spark
     spark.stop()
     
     
