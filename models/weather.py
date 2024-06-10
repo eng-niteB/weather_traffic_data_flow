@@ -4,7 +4,7 @@ import sys
 from pyspark.sql import types as T
 from typing import Dict, Any, List
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import requests
 
 #Adicionar o diretório principal ao sys.path
@@ -23,8 +23,9 @@ class Weather:
     trusted_key_column : str = 'nu_cidade'
     trusted_order_column : str = "dt_carga"
     partition_column: str = "dt"
-
-    
+    optional_fields: List[str] = field(default_factory=lambda: ['sea_level','grnd_level','visibility','wind_gust'])
+    critical_fields: List[str] = field(default_factory=lambda: ['id','city','country','lon','lat','weather_description','temp','feels_like','temp_min','temp_max','pressure','humidity','wind_speed','wind_deg','sunrise','sunset','load_dt','dt'])
+        
     @staticmethod
     def get_trusted_schema() -> T.StructType:
         """

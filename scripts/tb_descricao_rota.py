@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-from datetime import datetime
 from typing import Dict, Any, List
 
 #Adicionar o diretório principal ao sys.path
@@ -51,6 +50,8 @@ if __name__ == "__main__":
     
     insert_trusted_data(df_new_data, df_trusted, key_column, order_colum, route_description_table_dir)
     
+    df_trusted = spark.read.parquet(route_description_table_dir)
+    df_trusted.show()
     spark.stop()
     
     

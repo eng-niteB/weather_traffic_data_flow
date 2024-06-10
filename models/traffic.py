@@ -4,7 +4,7 @@ import sys
 from pyspark.sql import types as T
 from typing import Dict, Any, List
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 import requests
 
 # Adicionar o diretório principal ao sys.path
@@ -24,7 +24,9 @@ class Traffic:
     trusted_order_column: str = "dt_carga"
     partition_column: str = "dt"
     citys_table : str = 'dados_climaticos'
-    
+    optional_fields : List[str] = field(default_factory=lambda : [])
+    critical_fields : List[str] = field(default_factory=lambda : ["route_uuid","origin_uuid","origin_city","destination_uuid","destination_city","destination_start","destination_end","cd_travel_distance","travel_distance","cd_travel_duration","travel_duration","steps","load_dt","dt"])
+        
     @staticmethod
     def get_raw_schema() -> T.StructType:
         """
