@@ -14,6 +14,26 @@ services:
       - postgres_jar_path
       - database_dir
 
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: dba
+      POSTGRES_PASSWORD: dba_password
+      POSTGRES_DB: dashboards
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hadoop
+
+networks:
+  hadoop:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
 secrets:
   maps_key:
     file: ./maps_key.txt
@@ -24,4 +44,4 @@ secrets:
   postgres_jar_path:
     file: ./postgres_jar_path.txt
   database_dir:
-    file: ./database_dir.txt
+    file: ./database_dir.txt 

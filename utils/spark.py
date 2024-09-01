@@ -101,7 +101,6 @@ def remove_duplicates(df: DataFrame, key_column: str, order_column : str) -> Dat
     return df
 
 @timer_func
-@timer_func
 def insert_data(spark: SparkSession, table_dir: str, table_name: str, schema: T.StructType, key_column: str, order_column: str, dt: str, new_data, partition_column: str) -> None:
     """
     Insere os dados novos na tabela destino, tratando eles antes da inserção

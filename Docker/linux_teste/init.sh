@@ -5,6 +5,8 @@ cp /run/secrets/maps_key /root/maps_key
 cp /run/secrets/weather_key /root/weather_key
 cp /run/secrets/temp_dir /root/temp_dir
 cp /run/secrets/postgres_jar_path /root/postgres_jar_path
+cp /run/secrets/postgres_jar_path /root/postgres_user
+cp /run/secrets/postgres_jar_path /root/postgres_password
 cp /run/secrets/database_dir /root/database_dir
 
 # Ajustar permissões
