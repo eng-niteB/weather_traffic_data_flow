@@ -2,7 +2,8 @@
 import os
 import sys
 from pyspark.sql import SparkSession, DataFrame
-from utils.postgres import save_to_postgres
+from pyspark.sql.functions import to_json
+from pyspark.sql import functions as F
 import argparse
 
 """
@@ -16,8 +17,11 @@ Bash uso:
 #Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from utils.postgres import save_to_postgres
 from utils.spark import get_spark_session
-from utils.config import timer_func,read_secret
+from utils.timer import timer_func
+from utils.config import read_secret
+from models.route_description import routeDescription
 
 @timer_func
 def get_args() -> argparse.Namespace:
@@ -36,6 +40,9 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 if __name__ == "__main__":
+    #Buscando o caminho do diretorio base das tabelas
+    database_dir : str = read_secret('/run/secrets/database_dir')
+    
     #Coletando argumentos passados via linha de comando
     args = get_args()
     
@@ -44,12 +51,14 @@ if __name__ == "__main__":
     tbOrigin : str = args.tbOrigin
     dbDest : str = args.dbDest
     tbDest : str = args.tbDest
+
+    tbDir : str = f"{database_dir}/{dbOrigin}/{tbOrigin}"
     
     #Criando sessão spark
     spark : SparkSession = get_spark_session()
     
-    df : DataFrame = spark.sql(f"SELECT * FROM {dbOrigin}.{tbOrigin}")
+    df : DataFrame = spark.read.parquet(tbDir)
+    
+    df = df.withColumn("passos", to_json(F.col("passos")))
     
     save_to_postgres(df, dbDest, tbDest, mode)
-    
-    

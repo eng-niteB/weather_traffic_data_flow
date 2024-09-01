@@ -56,7 +56,7 @@ RUN wget https://jdbc.postgresql.org/download/postgresql-42.2.23.jar -P /opt/spa
 # Criar diretório para repositórios e clonar o repositório específico
 ENV PROJECT_NAME=weather_traffic_data_flow
 RUN mkdir -p /root/repositorios
-RUN git clone https://github.com/eng-niteB/weather_traffic_data_flow.git /root/repositorios/${PROJECT_NAME}/
+RUN git clone --branch main https://github.com/eng-niteB/weather_traffic_data_flow.git /root/repositorios/${PROJECT_NAME}/
 RUN mkdir -p /root/repositorios/${PROJECT_NAME}/database/raw
 RUN mkdir -p /root/repositorios/${PROJECT_NAME}/database/trusted
 RUN mkdir -p /root/repositorios/${PROJECT_NAME}/database/refined

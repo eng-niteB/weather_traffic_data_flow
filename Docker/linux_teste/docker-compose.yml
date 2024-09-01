@@ -7,12 +7,16 @@ services:
       context: .
     ports:
       - "2223:22"
+    networks:
+      - hadoop
     secrets:
       - maps_key
       - weather_key
       - temp_dir
       - postgres_jar_path
       - database_dir
+      - postgres_user
+      - postgres_password
 
   postgres:
     image: postgres:13
@@ -43,5 +47,9 @@ secrets:
     file: ./temp_dir.txt
   postgres_jar_path:
     file: ./postgres_jar_path.txt
+  postgres_user:
+    file: ./postgres_user.txt
+  postgres_password:
+    file: ./postgres_password.txt
   database_dir:
     file: ./database_dir.txt 

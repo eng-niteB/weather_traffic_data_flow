@@ -1,7 +1,6 @@
-from pyspark.sql import functions as F
-from pyspark.sql import types as T
 from pyspark.sql import DataFrame
-from utils.timer import timer_func,read_secret
+from utils.timer import timer_func
+from utils.config import read_secret
 
 user = read_secret('/run/secrets/postgres_user')
 password = read_secret('/run/secrets/postgres_password')
@@ -12,7 +11,7 @@ def save_to_postgres(df: DataFrame, schema: str, table_name: str, mode: str = "o
     dbtable = f"{schema}.{table_name}"
     df.write \
       .format("jdbc") \
-      .option("url", "jdbc:postgresql://localhost:5432/postgres") \
+      .option("url", "jdbc:postgresql://postgres:5432/dashboards") \
       .option("dbtable", dbtable) \
       .option("user", user) \
       .option("password", password) \

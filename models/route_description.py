@@ -9,7 +9,7 @@ from pyspark.sql import SparkSession
 # Adicionar o diretório principal ao sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.config import timer_func
+from utils.timer import timer_func
 from utils.spark import get_citys_data
 
 @dataclass(frozen=True)
