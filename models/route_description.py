@@ -14,10 +14,10 @@ from utils.spark import get_citys_data
 
 @dataclass(frozen=True)
 class routeDescription:
-    trusted_schema: str = 'trusted'
-    trusted_name: str = 'descricao_rota'
-    trusted_key_column: str = 'nu_rota'
-    trusted_order_column: str = "dt_carga"
+    schema: str = 'trusted'
+    name: str = 'descricao_rota'
+    key_column: str = 'nu_rota'
+    order_column: str = "dt_carga"
     
     @staticmethod
     def get_trusted_schema() -> T.StructType:
@@ -84,9 +84,7 @@ class routeDescription:
             
             origin_data = citys_data[0]
             destination_data = citys_data[1]
-            
-            print(data)
-                       
+                                   
             formatted_data = {
                 "nu_rota" : data['nu_rota'],
                 "nu_origem" : data["nu_cidade_origem"],

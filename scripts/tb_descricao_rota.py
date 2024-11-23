@@ -22,19 +22,19 @@ if __name__ == "__main__":
     routes : Traffic = Traffic()
     route_description = routeDescription()
     
-    key_column = route_description.trusted_key_column
-    order_colum = route_description.trusted_order_column
+    key_column = route_description.key_column
+    order_colum = route_description.order_column
     
     #Montando caminhos especificos da camda e da tabela
     routes_table_dir : str = f"{database_dir}/{routes.trusted_schema}/{routes.trusted_name}"
     weather_table_dir : str = f"{database_dir}/{weather.trusted_schema}/{weather.trusted_name}"
-    route_description_table_dir : str = f"{database_dir}/{route_description.trusted_schema}/{route_description.trusted_name}"
+    route_description_table_dir : str = f"{database_dir}/{route_description.schema}/{route_description.name}"
     
     #Criando sessão spark
     spark =  get_spark_session()
      
     #Verificando se a tabela existe e se não criando-a
-    create_table(spark,route_description_table_dir,route_description.trusted_name,route_description.get_trusted_schema())
+    create_table(spark,route_description_table_dir,route_description.name,route_description.get_trusted_schema())
     
     #Busca os dados de rotas solicitadas
     df_routes = spark.read.parquet(routes_table_dir)
